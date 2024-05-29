@@ -1,9 +1,9 @@
 import cv2
-import time
 import numpy as np
 from imageai.Detection import ObjectDetection
 from tensorflow import keras
 import os
+import time
 
 # Инициализация модели для детекции объектов
 detector = ObjectDetection()
@@ -15,17 +15,14 @@ detector.loadModel()
 model = keras.models.load_model('NoJacket.model')
 CATEGORIES = ['jacket', 'no_jacket']
 
-# Настройка видеопотока с камеры
-cap = cv2.VideoCapture(0)
-custom_objects = detector.CustomObjects(person=True)
+# Путь к директории с изображениями
+image_dir = 'test'
+detected_dir = 'detected'
+temp_dir = 'temp'
 
-# Директории для временных и обнаруженных файлов
-temp_dir = "temp"
-detected_dir = "detected"
-
-# Создание директорий, если они не существуют
-os.makedirs(temp_dir, exist_ok=True)
+# Создание директорий для сохранения результатов и временных файлов
 os.makedirs(detected_dir, exist_ok=True)
+os.makedirs(temp_dir, exist_ok=True)
 
 def process_image(img):
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -33,29 +30,29 @@ def process_image(img):
     reshaped_img = resized_img.reshape(-1, 256, 256, 1)
     return reshaped_img
 
-# Переменная для отслеживания времени последнего обработанного кадра
-last_processed_time = time.time()
+# Получение списка файлов в директории
+image_files = [f for f in os.listdir(image_dir) if os.path.isfile(os.path.join(image_dir, f))]
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Не удалось получить кадр с камеры.")
-        break
-
-    # Проверка, прошло ли уже 5 секунд с момента обработки последнего кадра
-    current_time = time.time()
-    if current_time - last_processed_time >= 5:
-        # Сохранение текущего кадра в виде изображения
-        frame_image_path = os.path.join(temp_dir, "temp_frame.jpg")
-        cv2.imwrite(frame_image_path, frame)
+# Обработка всех изображений в директории
+if not image_files:
+    print(f"Нет изображений в директории: {image_dir}")
+else:
+    for image_file in image_files:
+        image_path = os.path.join(image_dir, image_file)
+        frame = cv2.imread(image_path)
+        if frame is None:
+            print(f"Не удалось загрузить изображение: {image_path}")
+            continue
 
         # Детекция объектов на изображении
+        frame_image_path = os.path.join(temp_dir, "temp_frame.jpg")
+        cv2.imwrite(frame_image_path, frame)
         detections = detector.detectObjectsFromImage(input_image=frame_image_path,
                                                      output_image_path=os.path.join(temp_dir, "temp_output.jpg"),
                                                      minimum_percentage_probability=30,
                                                      display_object_name=False,
                                                      display_percentage_probability=False,
-                                                     custom_objects=custom_objects)
+                                                     custom_objects=detector.CustomObjects(person=True))
         if detections:
             for eachObject in detections:
                 box_points = eachObject["box_points"]
@@ -76,19 +73,9 @@ while True:
 
                 # Если обнаружена верхняя одежда, сохраняем изображение целиком
                 if predicted_class == 'jacket':
-                    detected_image_path = os.path.join(detected_dir, f"detected_person_with_jacket_{time.strftime('%Y%m%d%H%M%S')}.jpg")
-                    cv2.imwrite(detected_image_path, frame)
+                    output_path = os.path.join(detected_dir, f"detected_person_with_jacket_{time.strftime('%Y%m%d%H%M%S')}.jpg")
+                    cv2.imwrite(output_path, frame)
+                    print(f"Изображение сохранено: {output_path}")
 
-        # Обновление времени последнего обработанного кадра
-        last_processed_time = current_time
-
-    # Отображение кадра
-    cv2.imshow('Video', frame)
-
-    # Прерывание цикла по нажатию клавиши 'q'
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Освобождение ресурсов
-cap.release()
-cv2.destroyAllWindows()
+        else:
+            print("Объекты не найдены на изображении:", image_path)
