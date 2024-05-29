@@ -67,7 +67,7 @@ while True:
 
                 # Если обнаружена верхняя одежда, сохраняем изображение целиком
                 if predicted_class == 'jacket':
-                    cv2.imwrite(f"detected_person_with_jacket_{time.strftime('%Y%m%d%H%M%S')}.jpg", cropped_image)
+                    cv2.imwrite(f"detected_person_with_jacket_{time.strftime('%Y%m%d%H%M%S')}.jpg", frame)
 
         # Обновление времени последнего обработанного кадра
         last_processed_time = current_time
