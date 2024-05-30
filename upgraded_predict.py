@@ -54,9 +54,8 @@ else:
                                                      display_percentage_probability=False,
                                                      custom_objects=detector.CustomObjects(person=True))
         if detections:
-            for eachObject in detections:
+            for i, eachObject in enumerate(detections):
                 box_points = eachObject["box_points"]
-                region = (box_points[0], box_points[1], box_points[2], box_points[3])
                 cropped_image = frame[box_points[1]:box_points[3], box_points[0]:box_points[2]]
 
                 # Предсказание на вырезанном изображении
@@ -65,16 +64,20 @@ else:
                 predicted_class_index = np.argmax(prediction)
                 predicted_class = CATEGORIES[predicted_class_index]
 
-                # Вывод результата
-                print(f"Prediction: {predicted_class}")
-                cv2.putText(frame, predicted_class, (box_points[0], box_points[1] - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                cv2.rectangle(frame, (box_points[0], box_points[1]), (box_points[2], box_points[3]), (0, 255, 0), 2)
-
-                # Если обнаружена верхняя одежда, сохраняем изображение целиком
                 if predicted_class == 'jacket':
-                    output_path = os.path.join(detected_dir, f"detected_person_with_jacket_{time.strftime('%Y%m%d%H%M%S')}.jpg")
-                    cv2.imwrite(output_path, frame)
+                    # Создание копии исходного изображения для каждого найденного "jacket"
+                    temp_frame = frame.copy()
+
+                    # Добавление метки и рамки только для "jacket"
+                    cv2.putText(temp_frame, predicted_class, (box_points[0], box_points[1] - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    cv2.rectangle(temp_frame, (box_points[0], box_points[1]), (box_points[2], box_points[3]),
+                                  (0, 255, 0), 2)
+
+                    # Сохранение изображения с выделением
+                    output_path = os.path.join(detected_dir,
+                                               f"detected_person_with_jacket_{i}_{time.strftime('%Y%m%d%H%M%S')}.jpg")
+                    cv2.imwrite(output_path, temp_frame)
                     print(f"Изображение сохранено: {output_path}")
 
         else:
